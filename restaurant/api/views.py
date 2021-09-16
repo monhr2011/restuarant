@@ -52,8 +52,11 @@ class BaseStaffAPIView(generics.GenericAPIView):
     permission_classes = [IsEmployee | IsAdmin]
 
 
+# region Reservation endpoints
+
 class TableList(ListModelMixin,
                 CreateModelMixin,
+                mixins.DestroyModelMixin,
                 BaseAdminAPIView):
     queryset = Table.objects.all().order_by('number')
     serializer_class = TableSerializer
@@ -76,21 +79,6 @@ class TableList(ListModelMixin,
         return self.destroy(request, *args, **kwargs)
 
 
-
-class TableDelete(mixins.DestroyModelMixin,
-                  BaseAdminAPIView):
-    queryset = Table.objects.all().order_by('number')
-    serializer_class = TableSerializer
-
-    def delete(self, request, *args, **kwargs):
-        table = self.get_object()
-        if table.reservations.exists():
-            raise ValidationError("Cannot delete that has reservations")
-        return self.destroy(request, *args, **kwargs)
-
-
-# region Reservation endpoints
-
 class CheckAvailableTimeSlots(BaseStaffAPIView):
     pass
 
@@ -98,14 +86,9 @@ class CheckAvailableTimeSlots(BaseStaffAPIView):
 class TodayReservations(ListModelMixin,
                         mixins.DestroyModelMixin,
                         BaseStaffAPIView):
-    def get_object(self):
-        return super().get_object()
-
     queryset = Reservation.today_reservations()
     serializer_class = ReservationSerializer
-
-    def get_queryset(self):
-        return super().get_queryset()
+    lookup_field = 'id'
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -118,12 +101,14 @@ class TodayReservations(ListModelMixin,
         try:
             table = Table.objects.get(number=serializer.data.get('table_no'))
         except:
-            raise ValidationError({'table_no':"Table number is not valid"})
-        return table.reserve(
+            raise ValidationError({'table_no': "Table number is not valid"})
+        reservation_table = table.reserve(
             start_time=start_time,
             end_time=end_time,
             reserved_by=request.user.staff
         )
+        serializer = self.get_serializer(reservation_table)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, )
 
     def delete(self, request, *args, **kwargs):
         reservation = self.get_object()
@@ -142,14 +127,9 @@ class AllReservations(ListModelMixin,
     ordering_fields = ['table_number']
 
     def get_queryset(self):
-
         return super().get_queryset()
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
-
-
-class DeleteReservation(BaseStaffAPIView):
-    pass
 
 # endregion
