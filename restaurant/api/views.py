@@ -102,15 +102,12 @@ class TodayReservations(ListModelMixin,
     serializer_class = ReservationSerializer
 
     def get_queryset(self):
-        print(self.request.query_params)
-
         return super().get_queryset()
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        print(request.query_params.get('start_time', None))
         serializer = ReserveTodaySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         start_time = parse_time(serializer.data.get('start_time'))
