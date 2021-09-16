@@ -1,11 +1,14 @@
 import datetime
 import logging
 
+from django.conf import settings
+from django.utils import timezone
 from django.utils.dateparse import parse_time
-from rest_framework import mixins, generics
+from rest_framework import mixins, generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from api.auth import IsAdmin, IsEmployee
 from api.mixins import ListModelMixin, CreateModelMixin
@@ -123,7 +126,11 @@ class TodayReservations(ListModelMixin,
         )
 
     def delete(self, request, *args, **kwargs):
-        pass
+        reservation = self.get_object()
+        if reservation.start_time <= timezone.now():
+            raise ValidationError("cannot delete reservation in the past")
+        else:
+            return self.delete(request, *args, **kwargs)
 
 
 class AllReservations(ListModelMixin,
