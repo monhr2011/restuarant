@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Min
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -43,12 +44,30 @@ class Table(models.Model):
         if start_date > end_date:
             raise ValueError("start_date cannot be greater than end_date")
         reservations = reservations.filter(end_time__gte=start_date, start_time__lte=end_date)
-        available_tables = Table.objects.filter(number_of_seats__gte=required_seats).exclude(
+        minimum_required_seats = Table.get_minimum_possible_seats(required_seats)
+        available_tables = Table.objects.filter(number_of_seats=minimum_required_seats).exclude(
             reservations__in=reservations
         )
         return available_tables
 
-    def reserve(self, start_time: datetime.time, end_time: datetime.time, reservation_date=None, reserved_by=None):
+    @staticmethod
+    def get_minimum_possible_seats(required_seats: int):
+        if required_seats < 1:
+            return 0
+        allowed_possible_tables = Table.objects.filter(number_of_seats__gte=required_seats)
+        if allowed_possible_tables.exists():
+            return allowed_possible_tables.aggregate(
+                minimum_possible_seat=Min('number_of_seats')).get("minimum_possible_seat")
+        else:
+            return 0
+
+    @staticmethod
+    def get_available_times(required_seats: int, reservation_date: datetime.date = None):
+        if not reservation_date:
+            reservation_date = timezone.now().date()
+
+    def reserve(self, start_time: datetime.time, end_time: datetime.time, reservation_date: datetime.date = None,
+                reserved_by=None):
         if not reservation_date:
             reservation_date = timezone.now().date()
         if self not in Table.get_available_tables(start_time=start_time,
