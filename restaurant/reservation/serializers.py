@@ -9,8 +9,10 @@ class TableSerializer(serializers.ModelSerializer):
         fields = ['number', 'number_of_seats']
 
 
-class TodayReservationSerializer(serializers.ModelSerializer):
-    pass
+class TodayReservationsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Reservation
+        fields = ['start_time', 'end_time', 'table_no']
 
 
 class ReserveTodaySerializer(serializers.Serializer):
