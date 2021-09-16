@@ -16,8 +16,10 @@ def exception_handler(exc, context):
         if isinstance(exc, ValueError):
             return Response({"error": {"message": exc.__str__()}}, status=status.HTTP_400_BAD_REQUEST)
         else:
+            logger.exception(exc)
             if settings.DEBUG:
-                return Response({'error': {"message": exc.__str__()}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {'error': {"message": "{}. Check error logs for more information".format(exc.__str__())}},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             else:
-                logger.exception(exc)
-                return Response({'error': "Internal Server Error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({'error': {"message": "Internal Server Error"}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
